@@ -1,7 +1,7 @@
 ################## IMPORTS
 import pygame
 import math
-from numpy import sign, array
+from numpy import sign, array, cos, sin
 from RK44Functions import oneStepMethod
 
 ################## MOVING OBJECTS CLASSES                
@@ -19,10 +19,7 @@ class CircleObject:
     def draw(self, window):
         pygame.draw.circle(window, self.color, (self.x, self.y), self.radius)
 
-    def move(self, WIDTH, HEIGHT):
-        # self.x += self.vel_x
-        # self.y += self.vel_y
-
+    def border(self, WIDTH, HEIGHT):
         if self.x <= self.radius:
             self.x = self.radius
         elif self.x + self.radius >= WIDTH:
@@ -32,23 +29,41 @@ class CircleObject:
         elif self.y + self.radius >= HEIGHT:
             self.y = HEIGHT - self.radius
             
-    def f(self, x, dest):
+    def fx(self, x, dest, angle):
         f0 = x[1]
-        f1 = (1/self.m) * (dest - x[0] - 0.8 * x[1])
-        # f1 = (1/self.m) * (10*(dest - x[0])/((dest-x[0])**2)**0.5 - 0.8 * x[1]) # "vel cte"
+        # f1 = (1/self.m) * (dest - x[0] - 0.8 * x[1])
+        f1 = (1/self.m) * (cos(angle) * sign(dest - x[0]) - 0.8 * x[1]) # limit velocity to 10 units
+        return array([f0, f1])
+    
+    def fy(self, x, dest, angle):
+        f0 = x[1]
+        # f1 = (1/self.m) * (dest - x[0] - 0.8 * x[1])
+        f1 = (1/self.m) * (sin(angle) * sign(dest - x[0]) - 0.8 * x[1]) # limit velocity to 10 units
         return array([f0, f1])
                         
-    def RKMove(self, dest, n):
-        if math.hypot(dest[0] - self.x, dest[1] - self.y) <= 2:
+    def EulerMove(self, dest, n):
+        if math.hypot(dest[0] - self.x, dest[1] - self.y) <= 1:
             return False
         else:
-            self.x, self.vel_x = oneStepMethod([self.x, self.vel_x], dest[0], n, self.f)
-            self.y, self.vel_y = oneStepMethod([self.y, self.vel_y], dest[1], n, self.f)
+            h = 1/n
+            for _ in range(n):
+                fx, fvx = self.f([self.x, self.vel_x], dest[0])
+                self.x += h * fx; self.vel_x += h * fvx
+                fy, fvy = self.f([self.y, self.vel_y], dest[1])
+                self.y += h * fy; self.vel_y += h * fvy
+            return [self.x, self.y]
+
+    def RKMove(self, dest, n):
+        if math.hypot(dest[0] - self.x, dest[1] - self.y) <= 1:
+            return False
+        else:
+            self.x, self.vel_x = oneStepMethod([self.x, self.vel_x], dest[0], n, self.fx, angle=dest[2])
+            self.y, self.vel_y = oneStepMethod([self.y, self.vel_y], dest[1], n, self.fy, angle=dest[2])
             return True
 
 ################## STATIC OBJECTS CLASSES
 class CircleStaticObject:
-    def __init__(self, id, x, y, radius, color, mass, objects):
+    def __init__(self, id, x, y, radius, color, mass):
         self.id = id
         self.x = x
         self.y = y
@@ -57,19 +72,24 @@ class CircleStaticObject:
         self.vel_x = 0
         self.vel_y = 0
         self.m = mass
+        self.done = True
 
     def draw(self, window):
         pygame.draw.circle(window, self.color, (self.x, self.y), self.radius)
         
-    def f(self, x, dest):
+    def fx(self, x, dest, angle):
         f0 = x[1]
-        f1 = (1/self.m) * (dest - x[0] - 0.8 * x[1])
+        # f1 = (1/self.m) * (dest - x[0] - 0.8 * x[1])
+        f1 = (1/self.m) * 10 * (cos(angle) * sign(dest - x[0]) - 0.8 * x[1])
+        return array([f0, f1])
+    
+    def fy(self, x, dest, angle):
+        f0 = x[1]
+        # f1 = (1/self.m) * (dest - x[0] - 0.8 * x[1])
+        f1 = (1/self.m) * 10 * (sin(angle) * sign(dest - x[0]) - 0.8 * x[1])
         return array([f0, f1])
 
-    def move(self, WIDTH, HEIGHT):
-        # self.x += self.vel_x
-        # self.y += self.vel_y
-        
+    def border(self, WIDTH, HEIGHT):
         if self.x <= self.radius:
             self.x = self.radius
         elif self.x + self.radius >= WIDTH:
@@ -79,9 +99,22 @@ class CircleStaticObject:
         elif self.y + self.radius >= HEIGHT:
             self.y = HEIGHT - self.radius
             
-    def RKMove(self, dest, n):
-        if math.hypot(dest[0] - self.x, dest[1] - self.y) <= 2:
+    def EulerMove(self, dest, n):
+        if math.hypot(dest[0] - self.x, dest[1] - self.y) <= 1:
+            self.done = False # static object has reached its destination, end simulation
             return
         else:
-            self.x, self.vel_x = oneStepMethod([self.x, self.vel_x], dest[0], n, self.f)
-            self.y, self.vel_y = oneStepMethod([self.y, self.vel_y], dest[1], n, self.f)
+            h = 1/n
+            for _ in range(n):
+                fx, fvx = self.f([self.x, self.vel_x], dest[0])
+                self.x += h * fx; self.vel_x += h * fvx
+                fy, fvy = self.f([self.y, self.vel_y], dest[1])
+                self.y += h * fy; self.vel_y += h * fvy
+
+    def RKMove(self, dest, n):
+        if math.hypot(dest[0] - self.x, dest[1] - self.y) <= 1:
+            self.done = False
+            return
+        else:
+            self.x, self.vel_x = oneStepMethod([self.x, self.vel_x], dest[0], n, self.fx, angle=dest[2])
+            self.y, self.vel_y = oneStepMethod([self.y, self.vel_y], dest[1], n, self.fy, angle=dest[2])
