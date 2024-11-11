@@ -1,7 +1,6 @@
 ################## IMPORTS
 import pygame
-import math
-from numpy import array, cos, sin
+from numpy import array, cos, sin, hypot
 from RK44Functions import oneStepMethod
 
 ################## MOVING OBJECTS CLASSES                
@@ -34,7 +33,7 @@ class CircleObject:
         return array([f0, f1])
                         
     def EulerMove(self, dest, n):
-        if math.hypot(*(dest[:2] - self.coord)) <= 1:
+        if hypot(*(dest[:2] - self.coord)) <= 1:
             return False
         else:
             h = 1/n
@@ -45,7 +44,7 @@ class CircleObject:
             return True
 
     def RKMove(self, dest, n):
-        if math.hypot(*(dest[:2] - self.coord)) <= 1:
+        if hypot(*(dest[:2] - self.coord)) <= 1:
             self.vel = array([0, 0])
             return False
         else:
@@ -82,7 +81,7 @@ class CircleStaticObject:
             self.coord[1] = HEIGHT - self.radius
             
     def EulerMove(self, dest, n):
-        if math.hypot(*(dest[:2] - self.coord)) <= 1:
+        if hypot(*(dest[:2] - self.coord)) <= 1:
             self.done = False # static object has reached its destination, end simulation
             return
         else:
@@ -92,7 +91,7 @@ class CircleStaticObject:
                 self.coord = self.coord + h * f; self.vel = self.vel + h * fv
 
     def RKMove(self, dest, n):
-        if math.hypot(*(dest[:2] - self.coord)) <= 1:
+        if hypot(*(dest[:2] - self.coord)) <= 1:
             self.vel = array([0, 0])
             self.done = False
             return
