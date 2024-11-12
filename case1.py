@@ -4,7 +4,7 @@ import random
 from numpy import pi, sin, cos, arctan2, arccos, hypot, array, append, flip
 from objectClasses import CircleObject, CircleStaticObject
 
-def main1(window, h):
+def main1(window, n):
     ################## INITIALIZATION AND START VALUES
     WIDTH, HEIGHT = window.get_width(), window.get_height()
     radius = 5; num_objects = 1; color = (0, 0, 0); mass = 0.1
@@ -49,7 +49,7 @@ def main1(window, h):
         pairs = {}
         candidates = list(range(len(objects)))
         for pos in positions:
-            closeIndex = array([hypot(pos[0] - objects[n].coord[0], pos[1] - objects[n].coord[1]) for n in candidates]).argmin() # returns the index of the closest object to pos
+            closeIndex = array([hypot(pos[0] - objects[k].coord[0], pos[1] - objects[k].coord[1]) for k in candidates]).argmin() # returns the index of the closest object to pos
             pos = append(pos, arctan2(*flip(pos - objects[candidates[closeIndex]].coord, 0))) # flip the subtraction to get dy, dx
             pairs[candidates[closeIndex]] = pos
             candidates.pop(closeIndex)
@@ -76,18 +76,18 @@ def main1(window, h):
         window.fill((255, 255, 255))
         if dmList.count(False) == num_objects: # if all objects have reached their destination, start moving the static object
             # static_object.EulerMove(dest, 4)
-            static_object.RKMove(dest, h)
+            static_object.RKMove(dest, n)
             for obj in objects:
                 # obj.EulerMove(pairsPlusVec[obj.id], 4)
-                obj.RKMove(pairsPlusVec[obj.id], h)
+                obj.RKMove(pairsPlusVec[obj.id], n)
                 
         else: # while there are objects that have not reached their destination, keep moving them
             # index = dmList.index(True) # one object at a time
             # dmList[index] = objects[index].EulerMove(pairs[index], 4)
-            # dmList[index] = objects[index].RKMove(pairs[index], h)
+            # dmList[index] = objects[index].RKMove(pairs[index], n)
             for obj in objects: # all objects at the same time
                 # dmList[obj.id] = obj.EulerMove(pairs[obj.id], 4)
-                dmList[obj.id] = obj.RKMove(pairs[obj.id], h)
+                dmList[obj.id] = obj.RKMove(pairs[obj.id], n)
         
         static_object.border(WIDTH, HEIGHT)
         static_object.draw(window)
